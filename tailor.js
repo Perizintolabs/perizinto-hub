@@ -10,6 +10,7 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
+const storage = firebase.storage();
 
 const GITHUB_USERNAME = "Perizinto"; 
 const REPO_NAME = "perizinto-hub";        
@@ -61,9 +62,10 @@ function renderList(data) {
     let html = ""; let lowCount = 0;
     data.forEach(d => {
         if (d.qty <= 2) lowCount++;
+        // Display thumbnail even for videos in Admin for speed
         html += `<div class="stock">
             <button class="delete-btn" onclick="deleteDesign('${d.id}')"><i class="fas fa-trash"></i></button>
-            <img src="${d.img}" class="stock-img" onclick="viewImage('${d.img}')">
+            <img src="${d.thumb || d.img}" class="stock-img" onclick="viewImage('${d.img}', '${d.type}')">
             <div class="sub">
                 <b class="dress-name">${d.name}</b><p>₦${d.price}</p>
                 <small>C: ${d.chest}" | N: ${d.neck}" | H: ${d.head}"</small>
@@ -80,6 +82,68 @@ function renderList(data) {
     document.getElementById('low-stocks').innerText = lowCount;
 }
 
+// Helper to generate Video Thumbnail
+function generateThumbnail(file) {
+    return new Promise((resolve) => {
+        const video = document.createElement('video');
+        video.src = URL.createObjectURL(file);
+        video.currentTime = 1; // Seek to 1 second
+        video.onloadeddata = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 300;
+            canvas.getContext('2d').drawImage(video, 0, 0, 300, 300);
+            resolve(canvas.toDataURL('image/jpeg'));
+        };
+    });
+}
+
+document.getElementById('btn1').onclick = async function() {
+    const file = document.getElementById('file').files[0];
+    const name = document.getElementById('letter').value;
+    const btn = document.getElementById('btn1');
+    if (!file || !name) return alert("File/Name required!");
+
+    btn.innerText = "Processing... ⏳";
+    btn.disabled = true;
+
+    try {
+        const fileType = file.type.split('/')[0];
+        let fileUrl = "";
+        let thumbUrl = "";
+
+        if (fileType === 'video') {
+            const storageRef = storage.ref(`designs/${auth.currentUser.uid}/${Date.now()}_video`);
+            const uploadTask = await storageRef.put(file);
+            fileUrl = await uploadTask.ref.getDownloadURL();
+            thumbUrl = await generateThumbnail(file); // Capture first frame
+        } else {
+            fileUrl = await new Promise(r => {
+                const reader = new FileReader();
+                reader.onload = e => r(e.target.result);
+                reader.readAsDataURL(file);
+            });
+            thumbUrl = fileUrl; // For images, thumb is the same as img
+        }
+
+        await db.collection("designs").add({
+            name: name, price: Number(document.getElementById('price').value) || 0,
+            chest: document.getElementById('chest').value || 0,
+            neck: document.getElementById('neck').value || 0,
+            head: document.getElementById('head').value || 0,
+            img: fileUrl, thumb: thumbUrl, type: fileType, qty: 1, ownerId: auth.currentUser.uid
+        });
+
+        btn.innerText = "Upload 🚀";
+        btn.disabled = false;
+        closeModals();
+    } catch (err) {
+        alert(err.message);
+        btn.innerText = "Upload 🚀";
+        btn.disabled = false;
+    }
+};
+
 function copyCatalogLink() {
     const uid = auth.currentUser.uid;
     const link = `https://${GITHUB_USERNAME}.github.io/${REPO_NAME}/customer.html?id=${uid}`;
@@ -90,37 +154,18 @@ function showQRModal() {
     const uid = auth.currentUser.uid;
     const link = `https://${GITHUB_USERNAME}.github.io/${REPO_NAME}/customer.html?id=${uid}`;
     const qrUrl = `https://chart.googleapis.com/chart?chs=250x250&cht=qr&chl=${encodeURIComponent(link)}&choe=UTF-8`;
-    document.getElementById('qr-container').innerHTML = `<img id="qr-img" src="${qrUrl}" crossOrigin="anonymous">`;
+    document.getElementById('qr-container').innerHTML = `<img id="qr-img" src="${qrUrl}">`;
     document.getElementById('qr-modal').style.display = 'flex';
 }
 
 function downloadQR() {
     const img = document.getElementById('qr-img');
     const link = document.createElement('a');
-    link.href = img.src;
-    link.download = "Shop_QR.png";
+    link.href = img.src; link.download = "Shop_QR.png";
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 
 function closeQRModal() { document.getElementById('qr-modal').style.display = 'none'; }
-
-document.getElementById('btn1').onclick = function() {
-    const file = document.getElementById('file').files[0];
-    const name = document.getElementById('letter').value;
-    if (!file || !name) return alert("Photo/Name required!");
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-        await db.collection("designs").add({
-            name: name, price: document.getElementById('price').value || 0,
-            chest: document.getElementById('chest').value || 0,
-            neck: document.getElementById('neck').value || 0,
-            head: document.getElementById('head').value || 0,
-            img: e.target.result, qty: 1, ownerId: auth.currentUser.uid
-        });
-        closeModals();
-    };
-    reader.readAsDataURL(file);
-};
 
 window.updateQty = (id, amt) => {
     const ref = db.collection("designs").doc(id);
@@ -143,16 +188,17 @@ window.changeBrandName = () => {
     if(n) db.collection("tailors").doc(auth.currentUser.uid).update({brandName: n});
 };
 
-window.reportError = () => { window.open(`https://wa.me/${MY_DEV_NUMBER}?text=Error found in Hub: `); };
+window.reportError = () => { 
+    const msg = encodeURIComponent("Hi Perizinto, I want to report an error in the admin dashboard: ");
+    window.open(`https://wa.me/${MY_DEV_NUMBER}?text=${msg}`); 
+};
 
-window.viewImage = (src) => { document.getElementById('full-glory-img').src = src; document.getElementById('image-modal').style.display = 'flex'; };
-
-window.searchDesigns = () => {
-    const term = document.getElementById('main-search').value.toLowerCase();
-    document.querySelectorAll('.stock').forEach(s => {
-        const name = s.querySelector('.dress-name').innerText.toLowerCase();
-        s.style.display = name.includes(term) ? "flex" : "none";
-    });
+window.viewImage = (src, type) => {
+    const modal = document.getElementById('image-modal');
+    modal.innerHTML = type === 'video' 
+        ? `<video src="${src}" controls autoplay style="max-width:95%; max-height:85%; border-radius:12px;"></video>`
+        : `<img src="${src}" style="max-width:95%; max-height:85%; border-radius:12px;">`;
+    modal.style.display = 'flex';
 };
 
 document.getElementById('open-sidebar').onclick = () => {
