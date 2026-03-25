@@ -9,48 +9,28 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <style>
-        :root { --primary: #25D366; --bg: #f8f9fa; --card: #ffffff; --text: #111; }
-        .dark-mode { --bg: #121212; --card: #1e1e1e; --text: #eee; }
-        body { background: var(--bg); color: var(--text); transition: 0.3s; margin: 0; font-family: 'Segoe UI', sans-serif; }
-        #sidebar { position: fixed; left: -285px; top: 0; width: 280px; height: 100%; background: #fff; z-index: 9999; transition: 0.3s; padding: 25px 15px; display: flex; flex-direction: column; box-shadow: 10px 0 20px rgba(0,0,0,0.2); }
-        .dark-mode #sidebar { background: #1e1e1e; color: #fff; }
-        #sidebar.active { left: 0; }
-        .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 9998; }
-        .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 15px 20px; background: var(--card); position: sticky; top: 0; z-index: 100; }
-        .order-btn { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 10px; }
-        #image-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 10000; align-items: center; justify-content: center; padding: 15px; }
-        .fav-btn { position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,0.9); border: none; border-radius: 50%; width: 35px; height: 35px; color: #ff4d4d; z-index: 5; }
-        .video-play-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-size: 2.5rem; opacity: 0.8; pointer-events: none; }
+        .order-btn-full { background: #25D366; color: white; border: none; padding: 10px; width: 100%; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .heart-btn { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9); border: none; width: 35px; height: 35px; border-radius: 50%; color: var(--danger); font-size: 18px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 5; }
     </style>
 </head>
 <body>
-    <div class="sidebar-overlay" id="overlay" onclick="toggleSidebar()"></div>
-    <nav id="sidebar">
-        <h3 id="side-brand">Loading...</h3><hr>
-        <div onclick="filterFavs(false)" style="padding:15px; cursor:pointer;"><i class="fas fa-th-large"></i> All Collections</div>
-        <div onclick="filterFavs(true)" style="padding:15px; cursor:pointer;"><i class="fas fa-heart"></i> My Favorites (<span id="fav-badge">0</span>)</div>
-        <div onclick="chatWithTailor()" style="padding:15px; cursor:pointer;"><i class="fab fa-whatsapp"></i> Chat with Tailor</div>
-        <div onclick="shareShop()" style="padding:15px; cursor:pointer;"><i class="fas fa-share-alt"></i> Share Shop</div>
-        <div onclick="toggleTheme()" style="padding:15px; cursor:pointer;"><i class="fas fa-moon"></i> <span id="mode-text-cust">Dark Mode</span></div>
-    </nav>
+    <header class="top-header">
+        <h2 id="brand-title">Loading Catalog...</h2>
+        <i class="fas fa-moon" style="font-size: 20px; cursor: pointer;" onclick="toggleCustomerTheme()"></i>
+    </header>
 
-    <div class="top-bar">
-        <i class="fas fa-bars" onclick="toggleSidebar()"></i>
-        <h2 id="main-title">Catalog</h2>
-        <i class="fas fa-search" onclick="document.getElementById('customer-search').focus()"></i>
-    </div>
-    
-    <div style="padding: 15px; max-width: 600px; margin: auto;">
-        <select id="price-filter" onchange="sortPrice()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 10px;">
-            <option value="none">Sort by Price</option>
-            <option value="low">Low to High</option>
-            <option value="high">High to Low</option>
-        </select>
-        <input type="search" id="customer-search" placeholder="Search styles..." style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; margin-bottom: 20px;">
-        <div id="catalog-list"></div>
+    <div class="search-container" style="margin-top: 15px;">
+        <input type="text" id="cust-search" class="search-box" placeholder="Search styles...">
     </div>
 
-    <div id="image-modal" onclick="this.style.display='none'"></div>
+    <main class="catalog-list" id="customer-list"></main>
+
+    <div id="lightbox" class="lightbox">
+        <div class="lightbox-close" onclick="closeLightbox()">&times;</div>
+        <img id="lightbox-img" src="">
+        <div id="lightbox-video-container" style="width:100%; max-width:600px; display:none;"></div>
+    </div>
+
     <script src="customer.js"></script>
 </body>
-    </html>
+</html>
