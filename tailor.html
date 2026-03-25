@@ -4,71 +4,253 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Hub - Admin</title>
+    <script src="https://js.paystack.co/v1/inline.js"></script>
     <link rel="stylesheet" href="tailor.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-storage-compat.js"></script>
+    <style>
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      .loader-spinner { border: 4px solid #f3f3f3; border-top: 4px solid #DAA520; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+      .edit-btn { position: absolute; top: 8px; left: 8px; background: rgba(255, 255, 255, 0.9); border: none; border-radius: 50%; width: 32px; height: 32px; color: #333; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 10; display: flex; align-items: center; justify-content: center; }
+      .qr-img-box { width: 100%; max-width: 250px; margin: 20px auto; border: 10px solid white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+      .support-btn { width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; color: white; display: flex; align-items: center; justify-content: center; gap: 10px; }
+      .btn-wa { background: #25D366; } .btn-email { background: #ea4335; }
+    </style>
 </head>
 <body>
-    <div id="auth-screen" style="display:none; position:fixed; inset:0; background:#f0f2f5; z-index:9999; flex-direction:column; align-items:center; justify-content:center; padding:20px;">
-        <div class="stat-box" style="width:100%; max-width:350px; padding:30px; background:white; border-radius:20px; box-shadow:0 10px 25px rgba(0,0,0,0.1);">
-            <h2 id="auth-title">Tailor Login</h2>
-            <input type="text" id="brand-input" placeholder="Business Name" style="display:none; margin-bottom:10px; padding:12px; border-radius:8px; border:1px solid #ddd; width:100%;">
-            <input type="tel" id="phone-input" placeholder="WhatsApp (e.g. 23480...)" style="display:none; margin-bottom:10px; padding:12px; border-radius:8px; border:1px solid #ddd; width:100%;">
-            <input type="email" id="email-input" placeholder="Email" style="margin-bottom:10px; padding:12px; border-radius:8px; border:1px solid #ddd; width:100%;">
-            <input type="password" id="pass-input" placeholder="Password" style="margin-bottom:15px; padding:12px; border-radius:8px; border:1px solid #ddd; width:100%;">
-            <button onclick="handleAuth()" style="width:100%; padding:14px; background:#111; color:#fff; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">Continue</button>
-            <p style="margin-top:15px; font-size:0.85rem; text-align:center;"><span onclick="toggleAuthMode()" id="toggle-link" style="color:#111; font-weight:bold; cursor:pointer;">Switch to Sign Up</span></p>
+    <div id="auth-screen" class="auth-screen">
+        <div class="auth-box">
+            <h2 id="auth-title">Login</h2>
+            <div class="input-group" id="brand-group" style="display:none; margin-bottom:15px;">
+                <input type="text" id="brand-input" placeholder="Brand Name (e.g. Perizinto's Design)">
+            </div>
+            <div class="input-group" id="phone-group" style="display:none; margin-bottom:15px;">
+                <input type="tel" id="phone-input" placeholder="WhatsApp (e.g. 23470...)">
+            </div>
+            <div class="input-group" style="margin-bottom:15px;">
+                <input type="email" id="email-input" placeholder="Email Address">
+            </div>
+            <div class="input-group" style="margin-bottom:20px; position: relative;">
+                <input type="password" id="pass-input" placeholder="Password" style="padding-right: 40px;">
+                <i class="fas fa-eye" id="toggle-pass" onclick="togglePassword()" style="position: absolute; right: 15px; top: 15px; cursor: pointer; color: #888;"></i>
+            </div>
+            <button onclick="handleAuth()" id="auth-btn" class="btn-dark" style="width:100%; padding:14px; font-size:1rem;">Login</button>
+            <div class="auth-links">
+                <span onclick="toggleAuthMode()" id="auth-switch">Create Account</span>
+                <span onclick="resetPassword()">Forgot Password?</span>
+            </div>
         </div>
     </div>
 
-    <div id="sidebar">
-        <div class="sidebar-header"><h3>Admin Menu</h3><i class="fas fa-times" onclick="closeModals()"></i></div>
-        <ul class="menu-links">
-            <li onclick="toggleDarkMode()"><i class="fas fa-moon"></i> <span id="mode-text">Dark Mode</span></li>
-            <li onclick="changeBrandName()"><i class="fas fa-edit"></i> <span>Change Brand</span></li>
-            <li onclick="copyCatalogLink()"><i class="fas fa-link"></i> <span>Copy Customer's Link</span></li>
-            <li onclick="showQRModal()"><i class="fas fa-qrcode"></i> <span>My Shop QR</span></li>
-            <li onclick="reportError()"><i class="fas fa-bug"></i> <span>Report Error</span></li>
-            <li onclick="auth.signOut()" style="color: #ff4d4d; border-top: 1px solid #eee; margin-top: 20px;"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></li>
-        </ul>
-    </div>
+    <header class="top-header">
+        <i class="fas fa-bars" style="font-size: 20px; cursor: pointer;" onclick="toggleSidebar()"></i>
+        <h2 id="brand-name">My Hub - Admin</h2>
+        <span id="top-tier-text" style="font-size: 10px; font-weight: bold; background: #eee; padding: 2px 6px; border-radius: 4px; margin-left: 5px;">FREE</span>
+        <button class="btn-dark" onclick="showAddModal()">+ Add</button>
+    </header>
 
-    <div id="qr-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.8); z-index:5000; align-items:center; justify-content:center; padding:20px;">
-        <div style="background:#fff; padding:25px; border-radius:20px; text-align:center; max-width:300px;">
-            <h3>Shop QR Code</h3>
-            <div id="qr-container" style="margin:20px 0; min-height: 200px; display: flex; align-items: center; justify-content: center; border: 1px dashed #ccc;"></div>
-            <button onclick="downloadQR()" style="background:#111; color:#fff; padding:12px 20px; border-radius:10px; border:none; cursor:pointer; width:100%;">Download QR</button>
-            <p onclick="closeQRModal()" style="margin-top:15px; cursor:pointer; color:#666;">Close</p>
+    <div class="dashboard-stats">
+        <div class="stat-card">
+            <small>Total Designs</small>
+            <b id="total-designs">0</b>
+        </div>
+        <div class="stat-card">
+            <small>Low Stock</small>
+            <b id="low-stock" style="color: var(--danger);">0</b>
+        </div>
+        <div class="stat-card">
+            <small>Tier</small>
+            <b id="user-tier" class="tier-free">Free</b>
         </div>
     </div>
 
-    <header id="intro"><i class="fas fa-bars" id="open-sidebar"></i><h3 id="brand-name">My Hub</h3> <button id="add-button"><b>+ Add</b></button></header>
-    <main>
-        <section id="items-info">
-            <div class="stat-box"><small>Total Designs</small><b id="total-stocks">0</b></div>
-            <div class="stat-box"><small>Low Stock</small><b id="low-stocks" style="color: #ff4d4d;">0</b></div>
-        </section>
-        <div id="search-container"><input type="search" id="main-search" oninput="searchDesigns()" placeholder="🔍 Search styles..."></div>
-        <section id="stocks-list"></section>
-    </main>
+    <div class="search-container">
+        <input type="text" id="admin-search" class="search-box" placeholder="Search styles...">
+    </div>
 
-    <div id="dropdown"><div class="dropdown-content">
-        <h3>Add New Style</h3>
-        <label>Photo/Video:</label> <input id="file" type="file" accept="image/*,video/*"/><br>
-        <label>Name:</label> <input id="letter" type="text" placeholder="e.g. Senator"/><br>
-        <label>Price (₦):</label> <input id="price" type="number" placeholder="20000"/>
-        <div id="measurement">
-            <div><label>Chest:</label> <input id="chest" type="number" placeholder="in"></div>
-            <div><label>Neck:</label> <input id="neck" type="number" placeholder="in"></div>
-            <div><label>Head:</label> <input id="head" type="number" placeholder="in"></div>
+    <main class="catalog-list" id="stocks-list"></main>
+
+    <nav id="sidebar" class="sidebar">
+        <h3>Admin Menu</h3>
+        <div class="menu-item" onclick="toggleTheme()">
+            <i class="fas fa-moon"></i> <span id="theme-text">Dark Mode</span>
         </div>
-        <div id="buttons"><button onclick="closeModals()">Cancel ❌</button><button id="btn1">Upload 🚀</button></div>
-    </div></div>
-    <div id="image-modal" onclick="this.style.display='none'"><div id="modal-content"></div></div>
-    <div id="overlay"></div>
-    <script src='tailor.js'></script>
+        <div class="menu-item" onclick="changeBrandPrompt()">
+            <i class="fas fa-edit"></i> Change Brand Name
+        </div>
+        <div class="menu-item" onclick="copyCustomerLink()">
+            <i class="fas fa-link"></i> Copy Customer's Link
+        </div>
+        <div class="menu-item" id="qr-menu-btn" onclick="openQRModal()">
+            <i class="fas fa-qrcode"></i> My Shop QR
+        </div>
+        <div class="menu-item" onclick="showAboutModal()">
+            <i class="fas fa-info-circle"></i> About Perizinto Hub
+        </div>
+        <div class="menu-item" onclick="showSupportModal()">
+            <i class="fas fa-bug"></i> Report Error
+        </div>
+        
+        <div id="sidebar-premium-status" style="display:none; margin: 15px 10px; padding: 12px; border-radius: 8px; background: rgba(218, 165, 32, 0.1); border: 1px solid #DAA520; text-align: center;">
+            <span style="color: #DAA520; font-weight: bold; font-size: 14px;">
+                <i class="fas fa-crown"></i> Premium Active
+            </span>
+            <div id="sidebar-days-count" style="font-size: 12px; margin-top: 5px; color: #888; font-weight: bold;"></div>
+        </div>
+        
+        <div id="upgrade-btn" class="menu-item premium-text" onclick="payWithPaystack()">
+            <i class="fas fa-crown"></i> Upgrade to Premium
+        </div>
+        <div class="menu-item danger" onclick="confirmLogout()" style="margin-top: 20px;">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </div>
+    </nav>
+
+    <div id="add-modal" class="bottom-sheet">
+        <div class="sheet-header">
+            <span>Add New Style</span>
+            <i class="fas fa-times" onclick="closeModals()" style="cursor:pointer; color:var(--danger);"></i>
+        </div>
+        <div class="sheet-body">
+            <div class="input-group">
+                <input type="file" id="file" accept="image/*" style="padding: 5px;">
+            </div>
+            <div class="input-group">
+                <label>Name:</label>
+                <input type="text" id="name" placeholder="e.g. Senator">
+            </div>
+            <div class="input-group">
+                <label>Price (₦):</label>
+                <input type="number" id="price" placeholder="20000">
+            </div>
+            <div class="input-group">
+                <label>Video Link: <small id="video-lock-text" style="color:var(--danger); font-weight:normal;">(Premium Only)</small></label>
+                <input type="url" id="video-link" placeholder="YouTube Link" disabled>
+            </div>
+            <div class="measure-row">
+    <div class="input-group">
+        <label>Chest:</label>
+        <input type="number" id="edit-chest" placeholder='in"' style="width:100%;">
+    </div>
+    <div class="input-group">
+        <label>Neck:</label>
+        <input type="number" id="edit-neck" placeholder='in"' style="width:100%;">
+    </div>
+    <div class="input-group">
+        <label>Head:</label>
+        <input type="number" id="edit-head" placeholder='in"' style="width:100%;">
+    </div>
+</div>
+        </div>
+        <div class="sheet-footer">
+            <button class="btn-cancel" onclick="closeModals()">Cancel ❌</button>
+            <button class="btn-dark" id="upload-btn">Upload 🚀</button>
+        </div>
+    </div>
+
+    <div id="edit-modal" class="bottom-sheet">
+        <div class="sheet-header">
+            <span>Edit Style Details</span>
+            <i class="fas fa-times" onclick="closeModals()" style="cursor:pointer; color:var(--danger);"></i>
+        </div>
+        <div class="sheet-body">
+            <input type="hidden" id="edit-id">
+            
+            <div class="input-group" style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                <label style="color: var(--primary); font-weight: bold;">Update Design Photo:</label>
+                <input type="file" id="edit-file" accept="image/*" style="padding: 5px; font-size: 12px;">
+                <small style="color: #888; display: block; margin-top: 4px;">Leave empty to keep current photo</small>
+            </div>
+
+            <div class="input-group">
+                <label>Name:</label>
+                <input type="text" id="edit-name" placeholder="e.g. Senator">
+            </div>
+            <div class="input-group">
+                <label>Price (₦):</label>
+                <input type="number" id="edit-price" placeholder="20000">
+            </div>
+            <div class="measure-row">
+                <div class="input-group" style="flex:1;">
+                    <label>Chest:</label>
+                    <input type="number" id="edit-chest" placeholder='in"'>
+                </div>
+                <div class="input-group" style="flex:1;">
+                    <label>Neck:</label>
+                    <input type="number" id="edit-neck" placeholder='in"'>
+                </div>
+                <div class="input-group" style="flex:1;">
+                    <label>Head:</label>
+                    <input type="number" id="edit-head" placeholder='in"'>
+                </div>
+            </div>
+        </div>
+        <div class="sheet-footer">
+            <button class="btn-cancel" onclick="closeModals()">Cancel ❌</button>
+            <button class="btn-dark" id="save-edit-btn" onclick="saveEdit()">Save Changes 💾</button>
+        </div>
+    </div>
+
+    <div id="qr-modal" class="bottom-sheet" style="text-align: center;">
+        <div class="sheet-header">
+            <span>Your Shop QR Code</span>
+            <i class="fas fa-times" onclick="closeModals()" style="cursor:pointer; color:var(--danger);"></i>
+        </div>
+        <div class="sheet-body">
+            <p style="font-size: 14px; color: #555;">Let customers scan this to view your catalogue instantly!</p>
+            <img id="qr-img" class="qr-img-box" src="" alt="Loading QR Code...">
+        </div>
+        <div class="sheet-footer">
+            <button class="btn-dark" style="width: 100%;" onclick="downloadQR()">Download QR 📥</button>
+        </div>
+    </div>
+
+    <div id="about-modal" class="bottom-sheet">
+        <div class="sheet-header">
+            <span>About Perizinto Hub</span>
+            <i class="fas fa-times" onclick="closeModals()" style="cursor:pointer; color:var(--danger);"></i>
+        </div>
+        <div class="sheet-body" style="font-size: 14px; color: #444; line-height: 1.5;">
+            <p><b>Perizinto Hub</b> is a digital catalogue manager built specifically for modern tailors and fashion designers.</p>
+            <p>Instead of sending blurry pictures on WhatsApp, this app lets you create a professional online shop link. Your customers can view your designs, check prices, and see measurements in full HD.</p>
+            <hr style="margin: 15px 0; border: 0; border-top: 1px solid #ddd;">
+            <h4 style="color: #DAA520; margin-bottom: 5px;"><i class="fas fa-crown"></i> Why Go Premium?</h4>
+            <ul style="padding-left: 20px; margin-top: 0;">
+                <li><b>Unlimited Uploads:</b> Break free from the 10-design limit.</li>
+                <li><b>Video Portfolios:</b> Add YouTube video links to show the fabric flow.</li>
+                <li><b>Direct QR Codes:</b> Generate a scan code for your physical shop wall.</li>
+                <li><b>Quick Edit:</b> Update prices and sizes on the fly.</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="support-modal" class="bottom-sheet">
+        <div class="sheet-header">
+            <span>Need Help?</span>
+            <i class="fas fa-times" onclick="closeModals()" style="cursor:pointer; color:var(--danger);"></i>
+        </div>
+        <div class="sheet-body" style="text-align: center;">
+            <p style="margin-bottom: 20px; color: #555;">How would you like to contact our support team?</p>
+            <button class="support-btn btn-wa" onclick="contactWhatsApp()"><i class="fab fa-whatsapp"></i> Chat on WhatsApp</button>
+            <button class="support-btn btn-email" onclick="contactEmail()"><i class="fas fa-envelope"></i> Send an Email</button>
+        </div>
+    </div>
+
+    <div id="lightbox" class="lightbox">
+        <div class="lightbox-close" onclick="closeLightbox()">&times;</div>
+        <img id="lightbox-img" src="">
+        <div id="lightbox-video-container" style="width:100%; max-width:600px; display:none;"></div>
+    </div>
+
+    <div id="overlay" class="overlay" onclick="closeModals()"></div>
+
+    <div id="global-loader" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:10000; flex-direction:column; align-items:center; justify-content:center; color:white; font-family: sans-serif;">
+        <div class="loader-spinner"></div>
+        <p id="loader-text" style="margin-top:20px; font-weight:bold; letter-spacing:1px;">PROCESSING...</p>
+    </div>
+
+    <script src="tailor.js"></script>
 </body>
-</html>
+        </html>
