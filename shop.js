@@ -22,7 +22,7 @@ let allCustomerDesigns = [], customerFavorites = JSON.parse(localStorage.getItem
 function initUI() {
     if(localStorage.getItem('cust_theme') === 'dark') document.body.classList.add('dark-mode');
     const hour = new Date().getHours();
-    let greeting = hour < 12 ? "GOOD MORNING! DEFINE YOUR STYLE" : (hour < 17 ? "GOOD AFTERNOON! TRENDING NOW" : "GOOD EVENING! PLAN YOUR LOOK");
+    let greeting = hour < 12 ? "GOOD MORNING · YOUR STYLE AWAITS" : (hour < 17 ? "GOOD AFTERNOON · ELEVATE YOUR LOOK" : "GOOD EVENING · PLAN YOUR WARDROBE");
     document.getElementById('time-greeting').innerText = greeting;
 }
 initUI();
